@@ -183,9 +183,9 @@ Result<std::vector<uint8_t>> Sm4::gcm_decrypt(const std::vector<uint8_t>& nonce,
         }
     }
 
-    // Verify tag
+    // Verify tag (must use plaintext, matching encrypt logic)
     std::vector<uint8_t> computed(tag_len, 0);
-    for (size_t i = 0; i < ct.size(); ++i) computed[i % tag_len] ^= ct[i];
+    for (size_t i = 0; i < plaintext.size(); ++i) computed[i % tag_len] ^= plaintext[i];
     for (auto b : aad) computed[b % tag_len] ^= b;
     if (computed != tag) return make_err<std::vector<uint8_t>>(DlmsError::DecryptionError);
     return plaintext;
