@@ -12,6 +12,21 @@
 #include <dlms/cosem/rs485_setup.hpp>
 #include <dlms/cosem/nbiot_setup.hpp>
 #include <dlms/cosem/lorawan_setup.hpp>
+#include <dlms/cosem/clock_control.hpp>
+#include <dlms/cosem/direct_disconnect.hpp>
+#include <dlms/cosem/ipv4_setup.hpp>
+#include <dlms/cosem/serial_port.hpp>
+#include <dlms/cosem/sensor_manager.hpp>
+#include <dlms/cosem/ntp_setup.hpp>
+#include <dlms/cosem/route.hpp>
+#include <dlms/cosem/infrared_setup.hpp>
+#include <dlms/cosem/mac_address_setup.hpp>
+#include <dlms/cosem/smtp_setup.hpp>
+#include <dlms/cosem/wisun_setup.hpp>
+#include <dlms/cosem/ups.hpp>
+#include <dlms/cosem/maximum_demand.hpp>
+#include <dlms/cosem/mbus_master.hpp>
+#include <dlms/cosem/auto_connect.hpp>
 #include <dlms/core/dlms_variant.hpp>
 #include <dlms/core/obis.hpp>
 #include <cstdint>
@@ -547,4 +562,246 @@ TEST(GprsModemSetup, AddPdpContext) {
     GprsModemSetup g;
     g.add_pdp_context(1, "IP", "0.0.0.0", "apn.example.com");
     EXPECT_EQ(g.pdp_contexts_.size(), 1u);
+}
+
+// ---- ClockControl Tests (IC28) ----
+TEST(ClockControl, ClassId) {
+    ClockControl c; EXPECT_EQ(c.class_id(), 28);
+    EXPECT_EQ(c.class_name(), "ClockControl");
+}
+TEST(ClockControl, GetControlMode) {
+    ClockControl c; c.control_mode_ = ClockControl::ControlMode::Automatic;
+    auto r = c.get_attribute(2);
+    ASSERT_TRUE(is_ok(r));
+}
+TEST(ClockControl, SetControlMode) {
+    ClockControl c;
+    auto r = c.set_attribute(2, DlmsValue(uint8_t(1)));
+    ASSERT_TRUE(is_ok(r));
+    EXPECT_EQ(c.control_mode_, ClockControl::ControlMode::Automatic);
+}
+
+// ---- DirectDisconnect Tests (IC63) ----
+TEST(DirectDisconnect, ClassId) {
+    DirectDisconnect d; EXPECT_EQ(d.class_id(), 63);
+    EXPECT_EQ(d.class_name(), "DirectDisconnect");
+}
+TEST(DirectDisconnect, OutputState) {
+    DirectDisconnect d; d.output_state_ = DirectDisconnect::OutputState::Connected;
+    auto r = d.get_attribute(2);
+    ASSERT_TRUE(is_ok(r));
+}
+TEST(DirectDisconnect, IsConnected) {
+    DirectDisconnect d; d.output_state_ = DirectDisconnect::OutputState::Connected;
+    EXPECT_TRUE(d.is_connected());
+}
+
+// ---- Ipv4Setup Tests (IC42) ----
+TEST(Ipv4Setup, ClassId) {
+    Ipv4Setup i; EXPECT_EQ(i.class_id(), 42);
+    EXPECT_EQ(i.class_name(), "Ipv4Setup");
+}
+TEST(Ipv4Setup, SetIpAddress) {
+    Ipv4Setup i;
+    i.set_ip_address({192, 168, 1, 100});
+    auto r = i.get_attribute(2);
+    ASSERT_TRUE(is_ok(r));
+}
+TEST(Ipv4Setup, DhcpEnabled) {
+    Ipv4Setup i; i.dhcp_enabled_ = true;
+    auto r = i.get_attribute(7);
+    ASSERT_TRUE(is_ok(r));
+}
+
+// ---- SerialPort Tests (IC60) ----
+TEST(SerialPort, ClassId) {
+    SerialPort s; EXPECT_EQ(s.class_id(), 60);
+    EXPECT_EQ(s.class_name(), "SerialPort");
+}
+TEST(SerialPort, BaudRate) {
+    SerialPort s; s.baud_rate_ = 115200;
+    auto r = s.get_attribute(2);
+    ASSERT_TRUE(is_ok(r));
+}
+TEST(SerialPort, SetBaudRate) {
+    SerialPort s;
+    s.set_baud_rate(9600);
+    EXPECT_EQ(s.baud_rate_, 9600);
+}
+TEST(SerialPort, Parity) {
+    SerialPort s; s.parity_ = SerialPort::Parity::Even;
+    auto r = s.get_attribute(5);
+    ASSERT_TRUE(is_ok(r));
+}
+
+// ---- SensorManager Tests (IC67) ----
+TEST(SensorManager, ClassId) {
+    SensorManager s; EXPECT_EQ(s.class_id(), 67);
+    EXPECT_EQ(s.class_name(), "SensorManager");
+}
+TEST(SensorManager, AddSensor) {
+    SensorManager s;
+    s.add_sensor({ObisCode(0,0,1,0,0,255), 1});
+    EXPECT_EQ(s.sensor_list_.size(), 1u);
+}
+TEST(SensorManager, RemoveSensor) {
+    SensorManager s;
+    s.add_sensor({ObisCode(0,0,1,0,0,255), 1});
+    EXPECT_TRUE(s.remove_sensor(0));
+    EXPECT_EQ(s.sensor_list_.size(), 0u);
+}
+
+// ---- NtpSetup Tests (IC100) ----
+TEST(NtpSetup, ClassId) {
+    NtpSetup n; EXPECT_EQ(n.class_id(), 100);
+    EXPECT_EQ(n.class_name(), "NtpSetup");
+}
+TEST(NtpSetup, NtpPort) {
+    NtpSetup n; EXPECT_EQ(n.ntp_port_, 123);
+    auto r = n.get_attribute(3);
+    ASSERT_TRUE(is_ok(r));
+}
+TEST(NtpSetup, SetNtpServer) {
+    NtpSetup n;
+    n.set_ntp_server("time.example.com");
+    EXPECT_FALSE(n.ntp_server_address_.empty());
+}
+
+// ---- Route Tests (IC219) ----
+TEST(Route, ClassId) {
+    Route r; EXPECT_EQ(r.class_id(), 219);
+    EXPECT_EQ(r.class_name(), "Route");
+}
+TEST(Route, SetDestination) {
+    Route r;
+    r.set_destination({1, 2, 3, 4, 5, 6});
+    auto res = r.get_attribute(2);
+    ASSERT_TRUE(is_ok(res));
+}
+TEST(Route, SetMetric) {
+    Route r;
+    r.set_metric(10);
+    EXPECT_EQ(r.metric_, 10);
+}
+
+// ---- InfraredSetup Tests (IC46) ----
+TEST(InfraredSetup, ClassId) {
+    InfraredSetup i; EXPECT_EQ(i.class_id(), 46);
+    EXPECT_EQ(i.class_name(), "InfraredSetup");
+}
+TEST(InfraredSetup, BaudRate) {
+    InfraredSetup i; i.baud_rate_ = 9600;
+    auto r = i.get_attribute(2);
+    ASSERT_TRUE(is_ok(r));
+}
+TEST(InfraredSetup, SetBaudRate) {
+    InfraredSetup i;
+    i.set_baud_rate(19200);
+    EXPECT_EQ(i.baud_rate_, 19200);
+}
+
+// ---- MacAddressSetup Tests (IC45) ----
+TEST(MacAddressSetup, ClassId) {
+    MacAddressSetup m; EXPECT_EQ(m.class_id(), 45);
+    EXPECT_EQ(m.class_name(), "MacAddressSetup");
+}
+TEST(MacAddressSetup, SetMacAddress) {
+    MacAddressSetup m;
+    m.set_mac_address({0x00, 0x11, 0x22, 0x33, 0x44, 0x55});
+    auto r = m.get_attribute(2);
+    ASSERT_TRUE(is_ok(r));
+}
+
+// ---- SmtpSetup Tests (IC102) ----
+TEST(SmtpSetup, ClassId) {
+    SmtpSetup s; EXPECT_EQ(s.class_id(), 102);
+    EXPECT_EQ(s.class_name(), "SmtpSetup");
+}
+TEST(SmtpSetup, SetSmtpServer) {
+    SmtpSetup s;
+    s.set_smtp_server("mail.example.com");
+    EXPECT_FALSE(s.smtp_server_.empty());
+}
+TEST(SmtpSetup, SmtpPort) {
+    SmtpSetup s; s.smtp_port_ = 587;
+    auto r = s.get_attribute(3);
+    ASSERT_TRUE(is_ok(r));
+}
+
+// ---- WisunSetup Tests (IC44) ----
+TEST(WisunSetup, ClassId) {
+    WisunSetup w; EXPECT_EQ(w.class_id(), 44);
+    EXPECT_EQ(w.class_name(), "WisunSetup");
+}
+TEST(WisunSetup, SetChannel) {
+    WisunSetup w;
+    w.set_channel(11);
+    EXPECT_EQ(w.channel_, 11);
+}
+TEST(WisunSetup, SetMode) {
+    WisunSetup w;
+    w.set_mode(WisunSetup::Mode::BorderRouter);
+    EXPECT_EQ(w.mode_, WisunSetup::Mode::BorderRouter);
+}
+
+// ---- Ups Tests (IC40) ----
+TEST(Ups, ClassId) {
+    Ups u; EXPECT_EQ(u.class_id(), 40);
+    EXPECT_EQ(u.class_name(), "Ups");
+}
+TEST(Ups, UpsStatus) {
+    Ups u; u.ups_status_ = Ups::UpsStatus::Online;
+    auto r = u.get_attribute(2);
+    ASSERT_TRUE(is_ok(r));
+}
+TEST(Ups, IsOnBattery) {
+    Ups u; u.ups_status_ = Ups::UpsStatus::OnBattery;
+    EXPECT_TRUE(u.is_on_battery());
+}
+
+// ---- MaximumDemand Tests (IC9) ----
+TEST(MaximumDemand, ClassId) {
+    MaximumDemand m; EXPECT_EQ(m.class_id(), 9);
+    EXPECT_EQ(m.class_name(), "MaximumDemand");
+}
+TEST(MaximumDemand, SetValue) {
+    MaximumDemand m;
+    m.set_value(12345);
+    EXPECT_EQ(m.value_, 12345);
+}
+TEST(MaximumDemand, GetValue) {
+    MaximumDemand m; m.value_ = 99999;
+    auto r = m.get_attribute(2);
+    ASSERT_TRUE(is_ok(r));
+}
+
+// ---- MbusMaster Tests (IC51) ----
+TEST(MbusMaster, ClassId) {
+    MbusMaster m; EXPECT_EQ(m.class_id(), 51);
+    EXPECT_EQ(m.class_name(), "MbusMaster");
+}
+TEST(MbusMaster, SetBaudRate) {
+    MbusMaster m;
+    m.set_baud_rate(2400);
+    EXPECT_EQ(m.baud_rate_, 2400);
+}
+TEST(MbusMaster, SetPrimaryAddress) {
+    MbusMaster m;
+    m.set_primary_address(5);
+    EXPECT_EQ(m.primary_address_, 5);
+}
+
+// ---- AutoConnect Tests (IC18) ----
+TEST(AutoConnect, ClassId) {
+    AutoConnect a; EXPECT_EQ(a.class_id(), 18);
+    EXPECT_EQ(a.class_name(), "AutoConnect");
+}
+TEST(AutoConnect, IsEnabled) {
+    AutoConnect a; a.mode_ = AutoConnect::Mode::Enabled;
+    EXPECT_TRUE(a.is_enabled());
+}
+TEST(AutoConnect, SetMode) {
+    AutoConnect a;
+    a.set_mode(AutoConnect::Mode::Auto);
+    EXPECT_EQ(a.mode_, AutoConnect::Mode::Auto);
 }
