@@ -1,71 +1,57 @@
-# DLMS/COSEM C++ Library
+# dlms-cosem-cpp
 
-A complete C++17 implementation of the DLMS/COSEM protocol stack for smart metering.
+**Complete DLMS/COSEM protocol stack for C++17** — header-only COSEM IC classes with full ASN.1, A-XDR, HDLC, and security support.
+
+[![Tests](https://img.shields.io/badge/tests-7%20suites%20passed-brightgreen)]()
+[![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)]()
+[![License: BSL 1.1](https://img.shields.io/badge/license-BSL%201.1-orange.svg)]()
 
 ## Features
 
-- **Core Types**: OBIS codes, DLMS variant types, date/time, byte buffer
-- **HDLC**: Full frame encoding/decoding (SNRM, UA, RR, I-frame, Disconnect), CRC-16, byte stuffing
-- **AXDR**: Complete A-XDR encoder/decoder for all DLMS data types
-- **ASN.1 BER**: BER-TLV encoder/decoder, AARQ/AARE APDU support
-- **Security**: Security Suite 0-5, AES-GCM (OpenSSL), SM4-GCM/GMAC (pure C++)
-- **COSEM IC Classes**: Data, Register, ExtendedRegister, DemandRegister, Clock,
-  ProfileGeneric, SecuritySetup, TariffPlan, TariffTable, LPSetup, RS485Setup,
-  NBIoTSetup, LoRaWANSetup
-- **Client**: DlmsClient with TCP and Serial transport support
-- **Cross-platform**: Linux, macOS, Windows
-- **No exceptions**: Uses `Result<T>` (variant-based) instead of exceptions
-- **Header-only** core with optional compiled SM4 implementation
+- **ASN.1 BER**: Tag-length-value encoding/decoding
+- **A-XDR Codec**: DLMS data encoding
+- **HDLC Framing**: LLC/MAC layer with CRC-16
+- **COSEM IC Classes**: 20+ interface classes for smart metering
+- **Security**: SM4 block cipher, AES-GCM, SM4-GMAC
+- **Transport**: TCP and mock transports
+
+## Project Structure
+
+```
+├── include/dlms/
+│   ├── asn1/      # ASN.1 BER types
+│   ├── axdr/      # A-XDR codec
+│   ├── cosem/     # COSEM IC classes (header-only)
+│   ├── hdlc/      # HDLC framing
+│   └── security/  # Crypto (SM4, AES-GCM)
+├── src/
+│   └── dlms/      # Implementation files
+└── tests/         # Test suites
+```
 
 ## Building
 
 ```bash
-mkdir build && cd build
-cmake ..
-cmake --build .
+mkdir -p build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make -j$(nproc)
 ctest --output-on-failure
 ```
 
-## Dependencies
+## COSEM IC Classes
 
-- CMake 3.16+
-- C++17 compiler
-- OpenSSL (optional, for AES-GCM)
-- Google Test (optional, for tests)
+Activity Calendar, Association LN, Disconnect Control, GPRS Modem Setup, Image Transfer, Limiter, M-Bus Client, Push Setup, Register Monitor, Special Days Table, and more.
 
-## Quick Example
+## Multi-Language Family
 
-```cpp
-#include <dlms/dlms.hpp>
-
-int main() {
-    // Create OBIS code
-    auto obis = dlms::ObisCode(1, 0, 1, 8, 0, 255);
-    std::cout << obis.to_canonical() << std::endl; // "1-0:1.8.0.255"
-
-    // Encode/decode DLMS data
-    dlms::axdr::AxdEncoder enc;
-    enc.encode_uint32(123456);
-    auto data = enc.data();
-
-    dlms::axdr::AxdDecoder dec(data);
-    auto result = dec.decode();
-    if (dlms::is_ok(result)) {
-        auto val = std::get<uint32_t>(dlms::get_val(result));
-        std::cout << "Decoded: " << val << std::endl;
-    }
-
-    // SM4 encryption (pure C++, no dependencies)
-    uint8_t key[16] = {/* your key */};
-    dlms::security::Sm4 sm4(key);
-    uint8_t block[16] = {/* plaintext */};
-    auto encrypted = sm4.encrypt_block(block);
-    auto decrypted = sm4.decrypt_block(encrypted.data());
-
-    return 0;
-}
-```
+| Language | Tests | Lines |
+|----------|-------|-------|
+| [Python](https://github.com/ViewWay/dlms-cosem) | 5,146 | 37K |
+| [Rust](https://github.com/ViewWay/dlms-cosem-rust) | 739 | 21K |
+| [Go](https://github.com/ViewWay/dlms-cosem-go) | 362 | 8K |
+| **C++** | **280+** | **6.5K** |
+| [C](https://github.com/ViewWay/dlms-cosem-c) | 36 | 6.2K |
 
 ## License
 
-MIT
+BSL 1.1
